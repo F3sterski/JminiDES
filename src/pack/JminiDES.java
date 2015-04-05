@@ -12,7 +12,6 @@ public class JminiDES {
 	
 	public static char[] key;
 	public static char[] K1;
-	public static char[] K2;
 	public static char[] plain;
 	public static char[] plain1;
 	public static char[] plain2;
@@ -137,12 +136,8 @@ public class JminiDES {
 	
 	public static void GenerateDECKey( int runda ){
 		K1 = new char[8];
-		K2 = new char[8];
 		for(int i = 7 ; i>=0;i--){
-			K1[i] = key[((runda-i)+8)%(key.length-1)];
-		}
-		for(int i = 7 ; i>=0;i--){
-			K2[i] = key[((runda-i)+7)%(key.length-1)];
+			K1[i] = key[((runda-i)+7)%(key.length-1)];
 		}		
 	}
 	
@@ -187,34 +182,39 @@ public class JminiDES {
 		    }
 	}
 	
+	public static String Crypt(int count){
+		String Result = null;
+		for(int round = 0 ; round<count ; round++){
+			GenerateKey(round);
+			String Left = new String(plain).substring(0, 6);
+			String Right = new String(plain).substring(6, 12);
+			char[] RightKeyXor = new char[8];
+			String RightAfterPermutation = Permutation(Right);
+			for(int i = 0 ;i<8;i++){
+				int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K1[i]);
+				RightKeyXor[i] = (char)(value+48);
+			}
+			String Sbox1Result = SBoxReturn(1,new String(RightKeyXor).substring(0, 4));
+			String Sbox2Result = SBoxReturn(2,new String(RightKeyXor).substring(4, 8));
+			String SboxFullResult = Sbox1Result + Sbox2Result ;		
+			char[] LeftKeyXor = new char[6];			
+			for(int i = 0 ;i<6;i++){
+				int value =  Character.getNumericValue(Left.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
+				LeftKeyXor[i] = (char)(value+48);
+			}		
+			Result = Right+new String(LeftKeyXor);
+			System.out.println(Result);
+		}
+		return Result;
+	}
+	
 	
 	public static void main(String[] args) throws IOException {
 		switch(args[0]){
 			case("-e"):
 				ReadFile("key",9);
 				ReadFile("plain",12);
-				for(int round = 0 ; round<8 ; round++){
-					GenerateKey(round);
-					String Left = new String(plain).substring(0, 6);
-					String Right = new String(plain).substring(6, 12);
-					char[] RightKeyXor = new char[8];
-					String RightAfterPermutation = Permutation(Right);
-					for(int i = 0 ;i<8;i++){
-						int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K1[i]);
-						RightKeyXor[i] = (char)(value+48);
-					}
-					String Sbox1Result = SBoxReturn(1,new String(RightKeyXor).substring(0, 4));
-					String Sbox2Result = SBoxReturn(2,new String(RightKeyXor).substring(4, 8));
-					String SboxFullResult = Sbox1Result + Sbox2Result ;		
-					char[] LeftKeyXor = new char[6];			
-					for(int i = 0 ;i<6;i++){
-						int value =  Character.getNumericValue(Left.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
-						LeftKeyXor[i] = (char)(value+48);
-					}		
-					String Result = Right+new String(LeftKeyXor);
-					System.out.println(Result);
-					plain = Result.toCharArray();
-				}
+				String Result = Crypt(8);
 				try {
 					FileWriter fileCryptoW = new FileWriter("crypto.txt");
 					fileCryptoW.write(new String(plain));
@@ -229,19 +229,16 @@ public class JminiDES {
 				ReadFile("crypto",12);
 				for(int round = 0 ; round<1 ; round++){
 					GenerateDECKey(round);
-					
-		System.out.println("1. K1 "+new String(K2));
-					
 					String Left = new String(crypto).substring(0, 6);
 					String Right = new String(crypto).substring(6, 12);
-					
+		System.out.println("1. L1 "+ Left +" R1 "+ Right +" K1 "+new String(K1).length());			
 					char[] RightKeyXor = new char[8];
 					String RightAfterPermutation = Permutation(Right);
 					
 		System.out.println("2. E(R) "+RightAfterPermutation);
 					
 					for(int i = 0 ;i<8;i++){
-						int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K2[i]);
+						int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K1[i]);
 						RightKeyXor[i] = (char)(value+48);
 					}
 		
@@ -249,16 +246,16 @@ public class JminiDES {
 					
 					String Sbox1Result = SBoxReturn(1,new String(RightKeyXor).substring(0, 4));
 					String Sbox2Result = SBoxReturn(2,new String(RightKeyXor).substring(4, 8));
-					
-		System.out.println("4. "+Sbox1Result+" "+ Sbox2Result);
-					
 					String SboxFullResult = Sbox1Result + Sbox2Result ;
+					
+		System.out.println("4. S1 "+ Sbox1Result +" S2 "+Sbox2Result+" f: "+ SboxFullResult);
+					
+					
 					char[] LeftKeyXor = new char[6];			
 					for(int i = 0 ;i<6;i++){
-						int value =  Character.getNumericValue(Left.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
+						int value =  Character.getNumericValue(Right.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
 						LeftKeyXor[i] = (char)(value+48);
 					}	
-					LeftKeyXor.
 		System.out.println("5. "+new String(LeftKeyXor));
 					String Result = Right+new String(LeftKeyXor);
 					crypto = Result.toCharArray();
