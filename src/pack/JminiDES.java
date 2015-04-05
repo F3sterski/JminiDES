@@ -3,6 +3,7 @@ package pack;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -11,21 +12,20 @@ public class JminiDES {
 	
 	public static char[] key;
 	public static char[] K1;
+	public static char[] K2;
 	public static char[] plain;
+	public static char[] plain1;
+	public static char[] plain2;
 	public static char[] crypto;
-	public static char[] dectypt;
+	public static char[] decrypto;
 	
 	public static final int P8[] = {1,2,4,3,4,3,5,6};
-		// public static final int S0[][] = {{1,0,1},{0,1,0},{};
-	public static final String S1[][] = {	{"101", "010", "001", "110"} ,
-											{"011", "100", "111", "000"} ,
-											{"001", "100", "110", "010"} ,
-											{"000", "111", "101", "011"} };
 	
-	public static final String S2[][] = {	{"100", "000", "110", "101"} ,
-										{"111", "001", "011", "010"} ,
-										{"101", "011", "000", "111"} ,
-										{"110", "010", "001", "100"} };
+	public static final String S1[][] = {	{"101", "010", "001", "110", "011", "100", "111", "000"} ,
+											{"001", "100", "110", "010", "000", "111", "101", "011"} };
+	
+	public static final String S2[][] = {	{"100", "000", "110", "101", "111", "001", "011", "010"} ,
+											{"101", "011", "000", "111", "110", "010", "001", "100"} };
 	
 	
 	
@@ -36,7 +36,6 @@ public class JminiDES {
             FileReader fileReader = new FileReader(name+".txt");
             BufferedReader bufferedReader = new BufferedReader(fileReader);
             String line = bufferedReader.readLine();
-            System.out.println(line);
             char[] wynik = null;
             switch(name){
             	case("key"):
@@ -105,8 +104,8 @@ public class JminiDES {
 		return tab;
 	}
 	public static String SBoxReturn(int boxNo, String bits){
-		String row = bits.charAt(0)+""+bits.charAt(3);
-		String column = bits.charAt(1)+""+bits.charAt(2);
+		String row = bits.charAt(0)+"";
+		String column = bits.charAt(1)+""+bits.charAt(2)+""+bits.charAt(3);
 		int rowNumberInt = Integer.parseInt(row, 2);
 		int rowColumnInt = Integer.parseInt(column, 2);
 		if(boxNo == 1){
@@ -129,47 +128,210 @@ public class JminiDES {
 	}
 	
 	
-	public static String GenerateKey( int runda ){
+	public static void GenerateKey( int runda ){
 		K1 = new char[8];
 		for(int i = 0 ; i<8;i++){
 			K1[i] = key[(runda+i)%(key.length-1)];
 		}
-		
-		return " ";
+	}
+	
+	public static void GenerateDECKey( int runda ){
+		K1 = new char[8];
+		K2 = new char[8];
+		for(int i = 7 ; i>=0;i--){
+			K1[i] = key[((runda-i)+8)%(key.length-1)];
+		}
+		for(int i = 7 ; i>=0;i--){
+			K2[i] = key[((runda-i)+7)%(key.length-1)];
+		}		
+	}
+	
+	public static void ReadToAnalyze(){
+		 try {
+	            FileReader fileReader = new FileReader("plain.txt");
+	            BufferedReader bufferedReader = new BufferedReader(fileReader);
+	            String line = bufferedReader.readLine();
+	            
+	            String wynik1Str = line.substring(0, 12);
+	            String wynik2Str = line.substring(13, 25);
+	            
+	            plain1 = wynik1Str.toCharArray();
+	            plain2 = wynik2Str.toCharArray();
+	            
+	            if(plain1.length!=12 ||plain2.length!=12){
+		        	System.err.println("Niepoprawna dlugosc");
+		        	System.exit(0);
+	            }
+	            
+	            for(int i=0;i<plain1.length;i++){
+	    			if ((plain1[i] != '0' && plain1[i] != '1')){
+	    				throw new IllegalArgumentException("Niepoprawny znak ");
+	    			}
+	            }
+	            
+	            bufferedReader.close();
+	    	}
+		    catch(FileNotFoundException ex) {
+		        System.err.println("Unable to open file 'key.txt'");   
+		        ex.printStackTrace();
+		        System.exit(0);
+		    }
+		    catch(IOException ex) {
+		        System.err.println("Error reading file 'key.txt'");  
+		        ex.printStackTrace();
+		        System.exit(0);
+		    }
+		    catch(NullPointerException ex){
+		    	ex.printStackTrace();
+		    	System.exit(0);
+		    }
 	}
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		switch(args[0]){
 			case("-e"):
 				ReadFile("key",9);
 				ReadFile("plain",12);
-				for(int round = 1 ; round<9 ; round++){
+				for(int round = 0 ; round<8 ; round++){
 					GenerateKey(round);
-					
-					String part1 = new String(plain).substring(0, 6);
-					String part2 = new String(plain).substring(6, 12);
-					char[] part2KeyXor = new char[8];
-					String part2AfterPermutation = Permutation(part2);
+					String Left = new String(plain).substring(0, 6);
+					String Right = new String(plain).substring(6, 12);
+					char[] RightKeyXor = new char[8];
+					String RightAfterPermutation = Permutation(Right);
 					for(int i = 0 ;i<8;i++){
-						int value =  Character.getNumericValue(part2AfterPermutation.charAt(i))^Character.getNumericValue(K1[i]);
-						part2KeyXor[i] = (char)(value+48);
+						int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K1[i]);
+						RightKeyXor[i] = (char)(value+48);
 					}
-					String Sbox1Result = SBoxReturn(1,new String(part2KeyXor).substring(0, 4));
-					String Sbox2Result = SBoxReturn(2,new String(part2KeyXor).substring(4, 8));
-					String SboxFullResult = Sbox1Result + Sbox2Result ;
-					char[] part1KeyXor = new char[6];			
+					String Sbox1Result = SBoxReturn(1,new String(RightKeyXor).substring(0, 4));
+					String Sbox2Result = SBoxReturn(2,new String(RightKeyXor).substring(4, 8));
+					String SboxFullResult = Sbox1Result + Sbox2Result ;		
+					char[] LeftKeyXor = new char[6];			
 					for(int i = 0 ;i<6;i++){
-						int value =  Character.getNumericValue(part1.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
-						part1KeyXor[i] = (char)(value+48);
+						int value =  Character.getNumericValue(Left.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
+						LeftKeyXor[i] = (char)(value+48);
 					}		
-					String Result = part2+new String(part1KeyXor);
+					String Result = Right+new String(LeftKeyXor);
 					System.out.println(Result);
+					plain = Result.toCharArray();
 				}
+				try {
+					FileWriter fileCryptoW = new FileWriter("crypto.txt");
+					fileCryptoW.write(new String(plain));
+					fileCryptoW.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}	
+			break;
+			
+			case("-d"):
+				ReadFile("key",9);
+				ReadFile("crypto",12);
+				for(int round = 0 ; round<1 ; round++){
+					GenerateDECKey(round);
+					
+		System.out.println("1. K1 "+new String(K2));
+					
+					String Left = new String(crypto).substring(0, 6);
+					String Right = new String(crypto).substring(6, 12);
+					
+					char[] RightKeyXor = new char[8];
+					String RightAfterPermutation = Permutation(Right);
+					
+		System.out.println("2. E(R) "+RightAfterPermutation);
+					
+					for(int i = 0 ;i<8;i++){
+						int value =  Character.getNumericValue(RightAfterPermutation.charAt(i))^Character.getNumericValue(K2[i]);
+						RightKeyXor[i] = (char)(value+48);
+					}
+		
+		System.out.println("3. ER xor K "+new String(RightKeyXor));
+					
+					String Sbox1Result = SBoxReturn(1,new String(RightKeyXor).substring(0, 4));
+					String Sbox2Result = SBoxReturn(2,new String(RightKeyXor).substring(4, 8));
+					
+		System.out.println("4. "+Sbox1Result+" "+ Sbox2Result);
+					
+					String SboxFullResult = Sbox1Result + Sbox2Result ;
+					char[] LeftKeyXor = new char[6];			
+					for(int i = 0 ;i<6;i++){
+						int value =  Character.getNumericValue(Left.charAt(i))^Character.getNumericValue(SboxFullResult.charAt(i));
+						LeftKeyXor[i] = (char)(value+48);
+					}	
+					LeftKeyXor.
+		System.out.println("5. "+new String(LeftKeyXor));
+					String Result = Right+new String(LeftKeyXor);
+					crypto = Result.toCharArray();
+				}
+				try {
+					FileWriter fileCryptoW = new FileWriter("decrypto.txt");
+					fileCryptoW.write(new String(crypto));
+					fileCryptoW.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}	
+				
+			break;
+		case("-a"):
+			ReadFile("key",9);
+			ReadToAnalyze();
+			FileWriter fileCryptoW = new FileWriter("analyze.txt");
+			char[] test = new char[12];
+			for(int i=0;i<12;i++){
+				int value = Character.getNumericValue(plain1[i])^Character.getNumericValue(plain2[i]);
+				test[i] = (char)(value+48);
+			}
+			fileCryptoW.write(new String(plain1)+" "+new String(plain2)+" "+new String(test)+"\n");
+			for(int round = 1 ; round<9 ; round++){
+				GenerateKey(round);
+				
+				String LeftA = new String(plain1).substring(0, 6);
+				String RightA = new String(plain1).substring(6, 12);
+				char[] RightKeyXorA = new char[8];
+				String RightAfterPermutationA = Permutation(RightA);
+				for(int i = 0 ;i<8;i++){
+					int value =  Character.getNumericValue(RightAfterPermutationA.charAt(i))^Character.getNumericValue(K1[i]);
+					RightKeyXorA[i] = (char)(value+48);
+				}
+				String Sbox1ResultA = SBoxReturn(1,new String(RightKeyXorA).substring(0, 4));
+				String Sbox2ResultA = SBoxReturn(2,new String(RightKeyXorA).substring(4, 8));
+				String SboxFullResultA = Sbox1ResultA + Sbox2ResultA ;
+				char[] LeftKeyXorA = new char[6];			
+				for(int i = 0 ;i<6;i++){
+					int value =  Character.getNumericValue(LeftA.charAt(i))^Character.getNumericValue(SboxFullResultA.charAt(i));
+					LeftKeyXorA[i] = (char)(value+48);
+				}		
+				String ResultA = RightA+new String(LeftKeyXorA);
+				
+				String LeftB = new String(plain2).substring(0, 6);
+				String RightB = new String(plain2).substring(6, 12);
+				char[] RightKeyXorB = new char[8];
+				String RightAfterPermutationB = Permutation(RightB);
+				for(int i = 0 ;i<8;i++){
+					int value =  Character.getNumericValue(RightAfterPermutationB.charAt(i))^Character.getNumericValue(K1[i]);
+					RightKeyXorB[i] = (char)(value+48);
+				}
+				String Sbox1ResultB = SBoxReturn(1,new String(RightKeyXorB).substring(0, 4));
+				String Sbox2ResultB = SBoxReturn(2,new String(RightKeyXorB).substring(4, 8));
+				String SboxFullResultB = Sbox1ResultB + Sbox2ResultB ;
+				char[] LeftKeyXorB = new char[6];			
+				for(int i = 0 ;i<6;i++){
+					int value =  Character.getNumericValue(LeftB.charAt(i))^Character.getNumericValue(SboxFullResultB.charAt(i));
+					LeftKeyXorB[i] = (char)(value+48);
+				}		
+				String ResultB = RightB+new String(LeftKeyXorB);
+								
+				
+				for(int i=0;i<12;i++){
+					int value = Character.getNumericValue(ResultA.charAt(i))^Character.getNumericValue(ResultB.charAt(i));
+					test[i] = (char)(value+48);
+				}
+				fileCryptoW.write(new String(ResultA)+" "+new String(ResultB)+" "+new String(test)+"\n");
+				plain1 = ResultA.toCharArray();
+				plain2 = ResultB.toCharArray();
+			}
+			fileCryptoW.close();
 			break;
 		}
-
-		
 	}
-
 }
