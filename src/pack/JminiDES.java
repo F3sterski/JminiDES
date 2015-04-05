@@ -203,6 +203,7 @@ public class JminiDES {
 				LeftKeyXor[i] = (char)(value+48);
 			}		
 			Result = Right+new String(LeftKeyXor);
+			plain = Result.toCharArray();
 			System.out.println(Result);
 		}
 		return Result;
@@ -257,7 +258,7 @@ public class JminiDES {
 						LeftKeyXor[i] = (char)(value+48);
 					}	
 		System.out.println("5. "+new String(LeftKeyXor));
-					String Result = Right+new String(LeftKeyXor);
+					Result = Right+new String(LeftKeyXor);
 					crypto = Result.toCharArray();
 				}
 				try {
